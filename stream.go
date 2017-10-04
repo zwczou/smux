@@ -45,13 +45,14 @@ func (s *Stream) ID() uint32 {
 // Read implements net.Conn
 func (s *Stream) Read(b []byte) (n int, err error) {
 	var deadline <-chan time.Time
+
+READ:
 	if d, ok := s.readDeadline.Load().(time.Time); ok && !d.IsZero() {
 		timer := time.NewTimer(d.Sub(time.Now()))
 		defer timer.Stop()
 		deadline = timer.C
 	}
 
-READ:
 	s.bufferLock.Lock()
 	n, err = s.buffer.Read(b)
 	s.bufferLock.Unlock()
@@ -142,6 +143,7 @@ func (s *Stream) Close() error {
 // A zero time value disables the deadline.
 func (s *Stream) SetReadDeadline(t time.Time) error {
 	s.readDeadline.Store(t)
+	s.notifyReadEvent()
 	return nil
 }
 
